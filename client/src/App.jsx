@@ -33,7 +33,8 @@ export default function App() {
       const uploadBill = async (file) => {
         const formData = new FormData()
         formData.append('bill', file)
-        const res = await axios.post('http://localhost:5001/api/extract', formData, {
+        const API_BASE = import.meta.env.VITE_BACKEND_URL || '/api'
+        const res = await axios.post(`${API_BASE}/extract`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         })
         if (!res.data.success) throw new Error(res.data.error || "Extraction failed")
@@ -67,7 +68,8 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const res = await axios.post('http://localhost:5001/api/generate-excel', {
+      const API_BASE = import.meta.env.VITE_BACKEND_URL || '/api'
+      const res = await axios.post(`${API_BASE}/generate-excel`, {
         consumer1,
         consumer2
       }, {
