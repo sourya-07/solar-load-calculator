@@ -1,10 +1,7 @@
 export default function ReviewTable({ 
   consumer1, 
-  consumer2, 
   originalConsumer1, 
-  originalConsumer2, 
   onChange1, 
-  onChange2, 
   onGenerate 
 }) {
   const fields = [
@@ -34,23 +31,15 @@ export default function ReviewTable({
 
   const allFields = [...fields, ...months]
 
-  const handleChange = (consumerNum, key, value) => {
-    if (consumerNum === 1) {
-      onChange1({ ...consumer1, [key]: value })
-    } else {
-      onChange2({ ...consumer2, [key]: value })
-    }
+  const handleChange = (key, value) => {
+    onChange1({ ...consumer1, [key]: value })
   }
 
-  const handleResetField = (consumerNum, key) => {
-    if (consumerNum === 1) {
-      onChange1({ ...consumer1, [key]: originalConsumer1[key] })
-    } else {
-      onChange2({ ...consumer2, [key]: originalConsumer2[key] })
-    }
+  const handleResetField = (key) => {
+    onChange1({ ...consumer1, [key]: originalConsumer1[key] })
   }
 
-  const renderInput = (consumer, originalConsumer, consumerNum, field) => {
+  const renderInput = (consumer, originalConsumer, field) => {
     const value = consumer?.[field.key] || ''
     const originalValue = originalConsumer?.[field.key] || ''
     const isMissing = !value || value === 'null' || value === null
@@ -61,7 +50,7 @@ export default function ReviewTable({
         <input
           type="text"
           value={value === 'null' ? '' : value}
-          onChange={(e) => handleChange(consumerNum, field.key, e.target.value)}
+          onChange={(e) => handleChange(field.key, e.target.value)}
           className={`w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-orange-500 transition-colors
             ${isMissing 
               ? 'bg-yellow-900/40 border-yellow-500/50 text-yellow-100 placeholder-yellow-500/50' 
@@ -70,7 +59,7 @@ export default function ReviewTable({
         />
         {isModified && (
           <button 
-            onClick={() => handleResetField(consumerNum, field.key)}
+            onClick={() => handleResetField(field.key)}
             className="text-xs text-orange-400 hover:text-orange-300 self-start mt-1 flex items-center transition-colors"
           >
             Reset to original
@@ -87,8 +76,7 @@ export default function ReviewTable({
           <thead className="bg-slate-800 border-b border-slate-700">
             <tr>
               <th className="px-6 py-4 font-semibold text-slate-300">Field</th>
-              <th className="px-6 py-4 font-semibold text-orange-400">Consumer 1 (Required)</th>
-              {consumer2 && <th className="px-6 py-4 font-semibold text-orange-400">Consumer 2</th>}
+              <th className="px-6 py-4 font-semibold text-orange-400">Extracted Value</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700/50">
@@ -96,13 +84,8 @@ export default function ReviewTable({
               <tr key={field.key} className="hover:bg-slate-700/20 transition-colors">
                 <td className="px-6 py-4 font-medium text-slate-400 align-top">{field.label}</td>
                 <td className="px-6 py-3 align-top">
-                  {renderInput(consumer1, originalConsumer1, 1, field)}
+                  {renderInput(consumer1, originalConsumer1, field)}
                 </td>
-                {consumer2 && (
-                  <td className="px-6 py-3 align-top">
-                    {renderInput(consumer2, originalConsumer2, 2, field)}
-                  </td>
-                )}
               </tr>
             ))}
           </tbody>

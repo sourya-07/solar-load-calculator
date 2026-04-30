@@ -1,6 +1,6 @@
 import { Download, Zap, Sun, IndianRupee } from 'lucide-react'
 
-export default function ResultCard({ consumer1, consumer2 }) {
+export default function ResultCard({ consumer1 }) {
   const calculateMetrics = (consumer) => {
     if (!consumer) return null
 
@@ -22,12 +22,8 @@ export default function ResultCard({ consumer1, consumer2 }) {
   }
 
   const m1 = calculateMetrics(consumer1)
-  const m2 = calculateMetrics(consumer2)
 
-  const totalCapacity = m1.capacity + (m2?.capacity || 0)
-  const totalPanels = m1.numPanels + (m2?.numPanels || 0)
-  const totalAvgUnits = m1.avgUnits + (m2?.avgUnits || 0)
-  const monthlySavings = Math.round(totalAvgUnits * 8) // ₹8 per unit avg
+  const monthlySavings = Math.round(m1.avgUnits * 8) // ₹8 per unit avg
 
   const MetricCard = ({ title, value, subtext, icon: Icon, color }) => (
     <div className="bg-slate-800/80 border border-slate-700 p-6 rounded-xl flex items-center gap-4">
@@ -49,20 +45,20 @@ export default function ResultCard({ consumer1, consumer2 }) {
           <Download size={40} />
         </div>
         <h2 className="text-3xl font-bold mb-2">Excel Generated Successfully!</h2>
-        <p className="text-slate-400">Your solar load analysis is ready to download.</p>
+        <p className="text-slate-400">Your solar load analysis for {consumer1.consumer_name} is ready.</p>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         <MetricCard 
-          title="Total System Size" 
-          value={`${totalCapacity.toFixed(1)} kW`}
-          subtext={`Combined capacity required`}
+          title="System Size" 
+          value={`${m1.capacity.toFixed(1)} kW`}
+          subtext={`Recommended capacity`}
           icon={Zap}
           color="bg-orange-500"
         />
         <MetricCard 
           title="Solar Panels" 
-          value={`${totalPanels} Panels`}
+          value={`${m1.numPanels} Panels`}
           subtext={`600W panels needed`}
           icon={Sun}
           color="bg-blue-500"
@@ -77,20 +73,14 @@ export default function ResultCard({ consumer1, consumer2 }) {
       </div>
 
       <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-6 mt-4">
-        <h3 className="text-lg font-semibold mb-4 text-slate-200 border-b border-slate-700 pb-2">Consumer Breakdown</h3>
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center py-2">
-            <span className="text-slate-400">Consumer 1 ({consumer1.consumer_name})</span>
-            <span className="font-medium">{Math.round(m1.avgUnits)} units/mo → {m1.capacity.toFixed(1)} kW → {m1.numPanels} panels</span>
-          </div>
-          {m2 && (
-            <div className="flex justify-between items-center py-2 border-t border-slate-700/50">
-              <span className="text-slate-400">Consumer 2 ({consumer2.consumer_name})</span>
-              <span className="font-medium">{Math.round(m2.avgUnits)} units/mo → {m2.capacity.toFixed(1)} kW → {m2.numPanels} panels</span>
-            </div>
-          )}
+        <div className="flex justify-between items-center">
+          <span className="text-slate-400">Average Monthly Consumption</span>
+          <span className="font-medium text-xl text-white">{Math.round(m1.avgUnits)} units</span>
         </div>
       </div>
+    </div>
+  )
+}
       
       {/* Note: The download happens automatically in App.jsx when the step changes to 'done'. 
           If they want to re-download, they can click a button. */}

@@ -8,13 +8,10 @@ import ResultCard from './components/ResultCard'
 export default function App() {
   const [step, setStep] = useState('upload') // 'upload' | 'processing' | 'review' | 'done'
   const [bill1, setBill1] = useState(null)
-  const [bill2, setBill2] = useState(null)
   const [consumer1, setConsumer1] = useState(null)
-  const [consumer2, setConsumer2] = useState(null)
   
   // Store original data for "Reset" functionality
   const [originalConsumer1, setOriginalConsumer1] = useState(null)
-  const [originalConsumer2, setOriginalConsumer2] = useState(null)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -41,17 +38,9 @@ export default function App() {
         return res.data.data
       }
 
-      const promises = [uploadBill(bill1)]
-      if (bill2) promises.push(uploadBill(bill2))
-
-      const results = await Promise.all(promises)
-      setConsumer1(results[0])
-      setOriginalConsumer1(results[0])
-      
-      if (results[1]) {
-        setConsumer2(results[1])
-        setOriginalConsumer2(results[1])
-      }
+      const result = await uploadBill(bill1)
+      setConsumer1(result)
+      setOriginalConsumer1(result)
       
       setStep('review')
     } catch (err) {
@@ -70,8 +59,7 @@ export default function App() {
     try {
       const API_BASE = import.meta.env.VITE_BACKEND_URL || '/api'
       const res = await axios.post(`${API_BASE}/generate-excel`, {
-        consumer1,
-        consumer2
+        consumer1
       }, {
         responseType: 'blob'
       })
@@ -96,11 +84,8 @@ export default function App() {
   const handleReset = () => {
     setStep('upload')
     setBill1(null)
-    setBill2(null)
     setConsumer1(null)
-    setConsumer2(null)
     setOriginalConsumer1(null)
-    setOriginalConsumer2(null)
     setError(null)
     setLoading(false)
   }
@@ -122,19 +107,12 @@ export default function App() {
       )}
 
       {step === 'upload' && (
-        <div className="glass-card flex flex-col gap-8">
-          <div className="grid md:grid-cols-2 gap-6">
-            <UploadZone 
-              label="Consumer 1 Bill (Required)" 
-              file={bill1} 
-              onFileChange={setBill1} 
-            />
-            <UploadZone 
-              label="Consumer 2 Bill (Optional)" 
-              file={bill2} 
-              onFileChange={setBill2} 
-            />
-          </div>
+        <div className="glass-card flex flex-col gap-8 max-w-2xl mx-auto">
+          <UploadZone 
+            label="Upload Electricity Bill (PDF or Image)" 
+            file={bill1} 
+            onFileChange={setBill1} 
+          />
           <button 
             onClick={handleExtract}
             disabled={!bill1 || loading}
@@ -163,11 +141,8 @@ export default function App() {
           <h2 className="text-2xl font-bold mb-6">Review Extracted Data</h2>
           <ReviewTable 
             consumer1={consumer1} 
-            consumer2={consumer2} 
             originalConsumer1={originalConsumer1}
-            originalConsumer2={originalConsumer2}
             onChange1={setConsumer1} 
-            onChange2={setConsumer2} 
             onGenerate={handleGenerateExcel} 
           />
         </div>
@@ -175,7 +150,7 @@ export default function App() {
 
       {step === 'done' && (
         <div className="glass-card animate-in zoom-in-95 duration-500">
-          <ResultCard consumer1={consumer1} consumer2={consumer2} />
+          <ResultCard consumer1={consumer1} />
           <div className="flex justify-center mt-8">
             <button 
               onClick={handleReset}
