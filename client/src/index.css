@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-900 text-slate-100 min-h-screen;
+}
+
+.glass-card {
+  @apply bg-slate-800/80 backdrop-blur-md shadow-md rounded-xl border border-slate-700 p-6;
+}
