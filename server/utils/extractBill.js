@@ -5,7 +5,7 @@ dotenv.config()
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
 
 export async function extractBillData(base64, mimeType) {
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" })
 
   const prompt = `
 You are an expert at reading Indian MSEDCL Maharashtra electricity bills 
