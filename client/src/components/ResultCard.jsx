@@ -77,13 +77,6 @@ export default function ResultCard({ consumer1 }) {
           <span className="text-slate-400">Average Monthly Consumption</span>
           <span className="font-medium text-xl text-white">{Math.round(m1.avgUnits)} units</span>
         </div>
-      </div>
-    </div>
-  )
-}
-      
-      {/* Note: The download happens automatically in App.jsx when the step changes to 'done'. 
-          If they want to re-download, they can click a button. */}
     </div>
   )
 }
