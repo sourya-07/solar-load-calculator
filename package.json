@@ -1,0 +1,17 @@
+{
+  "name": "energybae-solar-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MSEDCL electricity bill -> filled Energybae solar Excel template via Gemini extraction.",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "postinstall": "npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently -k -n server,client -c blue,green \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "build": "npm --prefix client run build",
+    "test": "npm --prefix server test",
+    "vercel-build": "npm --prefix client run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

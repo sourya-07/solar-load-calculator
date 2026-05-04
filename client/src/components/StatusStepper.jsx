@@ -1,55 +1,35 @@
-import { UploadCloud, Sparkles, ClipboardCheck, Download } from 'lucide-react'
+const STEPS = [
+  { id: 'upload',     label: 'upload' },
+  { id: 'processing', label: 'extract' },
+  { id: 'review',     label: 'review' },
+  { id: 'done',       label: 'download' },
+]
 
 export default function StatusStepper({ currentStep }) {
-  const steps = [
-    { id: 'upload', label: 'Upload Bills', icon: UploadCloud },
-    { id: 'processing', label: 'AI Extracting', icon: Sparkles },
-    { id: 'review', label: 'Review Data', icon: ClipboardCheck },
-    { id: 'done', label: 'Download Excel', icon: Download },
-  ]
-
-  const getStepStatus = (stepId) => {
-    const currentIndex = steps.findIndex(s => s.id === currentStep)
-    const stepIndex = steps.findIndex(s => s.id === stepId)
-    
-    if (stepIndex < currentIndex) return 'completed'
-    if (stepIndex === currentIndex) return 'active'
-    return 'pending'
-  }
+  const currentIndex = STEPS.findIndex(s => s.id === currentStep)
 
   return (
-    <div className="flex items-center justify-between mb-12 relative max-w-3xl mx-auto">
-      {/* Background line */}
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-800 rounded-full z-0"></div>
-      
-      {/* Active line progress */}
-      <div 
-        className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-orange-500 rounded-full z-0 transition-all duration-500"
-        style={{ 
-          width: `${(steps.findIndex(s => s.id === currentStep) / (steps.length - 1)) * 100}%` 
-        }}
-      ></div>
-
-      {steps.map((step) => {
-        const status = getStepStatus(step.id)
-        const Icon = step.icon
-        
+    <div className="grid grid-cols-2 sm:grid-cols-4 border-t-[1.5px] border-ink">
+      {STEPS.map((step, i) => {
+        const isActive = i === currentIndex
+        const isDone = i < currentIndex
         return (
-          <div key={step.id} className="relative z-10 flex flex-col items-center gap-2">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors duration-300
-              ${status === 'completed' ? 'bg-green-500 text-slate-900 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : ''}
-              ${status === 'active' ? 'bg-orange-500 text-slate-900 shadow-[0_0_15px_rgba(249,115,22,0.4)] ring-4 ring-orange-500/20' : ''}
-              ${status === 'pending' ? 'bg-slate-800 text-slate-400 border-2 border-slate-700' : ''}
-            `}>
-              <Icon size={20} />
+          <div
+            key={step.id}
+            className={`relative border-l-[1.5px] border-ink first:border-l-0 px-5 py-6 overflow-hidden ${
+              isActive ? '' : ''
+            }`}
+          >
+            {isActive && (
+              <div className="absolute -left-6 -top-4 w-44 h-20 pink-highlight blur-xl opacity-90 pointer-events-none" />
+            )}
+            <span className="absolute top-3 right-3 font-display font-bold text-xl text-ink">↗</span>
+            <div className="relative">
+              <div className="micro text-ink/50 mb-1">step {i + 1}</div>
+              <div className={`display-label text-2xl ${isDone ? 'line-through decoration-2 text-ink/50' : 'text-ink'}`}>
+                {step.label}
+              </div>
             </div>
-            <span className={`text-xs font-semibold uppercase tracking-wider
-              ${status === 'completed' ? 'text-green-500' : ''}
-              ${status === 'active' ? 'text-orange-500' : ''}
-              ${status === 'pending' ? 'text-slate-500' : ''}
-            `}>
-              {step.label}
-            </span>
           </div>
         )
       })}

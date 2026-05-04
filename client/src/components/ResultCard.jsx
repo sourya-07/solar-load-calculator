@@ -1,82 +1,68 @@
-import { Download, Zap, Sun, IndianRupee } from 'lucide-react'
+const MONTH_KEYS = [
+  'units_feb2025', 'units_mar2025', 'units_apr2025', 'units_may2025',
+  'units_jun2025', 'units_jul2025', 'units_aug2025', 'units_sep2025',
+  'units_oct2025', 'units_nov2025', 'units_dec2025', 'units_jan2026',
+]
+
+function summarize(consumer) {
+  if (!consumer) return null
+  const values = MONTH_KEYS
+    .map(k => parseFloat(consumer[k]))
+    .filter(v => Number.isFinite(v) && v >= 0)
+  const total = values.reduce((s, v) => s + v, 0)
+  const avg = values.length ? total / values.length : 0
+  return { total, avg, monthsWithData: values.length }
+}
 
 export default function ResultCard({ consumer1 }) {
-  const calculateMetrics = (consumer) => {
-    if (!consumer) return null
+  const summary = summarize(consumer1)
+  if (!consumer1 || !summary) return null
 
-    const months = [
-      'units_feb2025', 'units_mar2025', 'units_apr2025', 'units_may2025',
-      'units_jun2025', 'units_jul2025', 'units_aug2025', 'units_sep2025',
-      'units_oct2025', 'units_nov2025', 'units_dec2025', 'units_jan2026'
-    ]
-
-    const totalUnits = months.reduce((sum, m) => sum + (parseFloat(consumer[m]) || 0), 0)
-    const avgUnits = totalUnits / 12
-
-    const kw = avgUnits / (4.5 * 30)
-    const panels = kw / 0.6
-    const capacity = Math.round(panels * 0.6 * 10) / 10
-    const numPanels = Math.ceil(panels)
-    
-    return { avgUnits, kw, panels, capacity, numPanels }
-  }
-
-  const m1 = calculateMetrics(consumer1)
-
-  const monthlySavings = Math.round(m1.avgUnits * 8) // ₹8 per unit avg
-
-  const MetricCard = ({ title, value, subtext, icon: Icon, color }) => (
-    <div className="bg-slate-800/80 border border-slate-700 p-6 rounded-xl flex items-center gap-4">
-      <div className={`p-4 rounded-full ${color}`}>
-        <Icon size={24} className="text-white" />
-      </div>
-      <div>
-        <p className="text-slate-400 text-sm font-medium">{title}</p>
-        <p className="text-2xl font-bold text-white">{value}</p>
-        {subtext && <p className="text-xs text-slate-500 mt-1">{subtext}</p>}
-      </div>
+  const Stat = ({ label, value, subtext }) => (
+    <div className="border-l-[1.5px] border-ink first:border-l-0 px-6 py-7">
+      <div className="micro text-ink/60 mb-2">{label}</div>
+      <div className="display-h1 text-3xl sm:text-4xl text-ink mb-1">{value}</div>
+      {subtext && <div className="text-xs text-ink/60">{subtext}</div>}
     </div>
   )
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="text-center mb-4">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-500/20 text-green-500 mb-6">
-          <Download size={40} />
+    <div>
+      <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] border-b-[1.5px] border-ink">
+        <div className="relative border-r-0 md:border-r-[1.5px] border-ink px-8 py-12 overflow-hidden flex items-center justify-center min-h-[180px]">
+          <div className="pink-blob absolute inset-0" />
+          <span className="relative font-display text-[120px] leading-none font-extrabold text-ink">✱</span>
         </div>
-        <h2 className="text-3xl font-bold mb-2">Excel Generated Successfully!</h2>
-        <p className="text-slate-400">Your solar load analysis for {consumer1.consumer_name} is ready.</p>
+        <div className="px-8 py-12">
+          <div className="micro text-ink/60 mb-3">step 4 · download</div>
+          <h2 className="display-h1 text-5xl sm:text-6xl mb-4">
+            excel ready.
+          </h2>
+          <p className="text-ink/70 max-w-xl leading-relaxed">
+            Your solar load report for{' '}
+            <span className="font-display font-bold text-ink">{consumer1.consumer_name || 'this customer'}</span>{' '}
+            has been generated using the official Energybae template. Recommended capacity, panel
+            count and projected savings live inside the file — open it to view.
+          </p>
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <MetricCard 
-          title="System Size" 
-          value={`${m1.capacity.toFixed(1)} kW`}
-          subtext={`Recommended capacity`}
-          icon={Zap}
-          color="bg-orange-500"
+      <div className="grid grid-cols-1 sm:grid-cols-3">
+        <Stat
+          label="avg monthly"
+          value={`${Math.round(summary.avg)} units`}
+          subtext={`${summary.monthsWithData} of 12 months`}
         />
-        <MetricCard 
-          title="Solar Panels" 
-          value={`${m1.numPanels} Panels`}
-          subtext={`600W panels needed`}
-          icon={Sun}
-          color="bg-blue-500"
+        <Stat
+          label="latest bill"
+          value={consumer1.latest_bill_amount ? `₹${Number(consumer1.latest_bill_amount).toLocaleString('en-IN')}` : '—'}
+          subtext={consumer1.latest_bill_month || ''}
         />
-        <MetricCard 
-          title="Est. Monthly Savings" 
-          value={`₹${monthlySavings.toLocaleString()}`}
-          subtext={`At avg ₹8/unit rate`}
-          icon={IndianRupee}
-          color="bg-green-500"
+        <Stat
+          label="sanctioned load"
+          value={consumer1.sanctioned_load_kw ? `${consumer1.sanctioned_load_kw} kW` : '—'}
+          subtext={consumer1.connection_type || ''}
         />
-      </div>
-
-      <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-6 mt-4">
-        <div className="flex justify-between items-center">
-          <span className="text-slate-400">Average Monthly Consumption</span>
-          <span className="font-medium text-xl text-white">{Math.round(m1.avgUnits)} units</span>
-        </div>
       </div>
     </div>
   )

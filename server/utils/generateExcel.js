@@ -1,58 +1,149 @@
-import xlsx from "xlsx"
+import ExcelJS from 'exceljs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
-export function buildExcel(c1, c2) {
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const TEMPLATE_PATH = path.resolve(__dirname, '..', 'templates', 'solar_load_template.xlsx')
+
+// Normalize label text for matching: strip whitespace, punctuation, lowercase.
+function norm(s) {
+  if (s == null) return ''
+  return String(s).toLowerCase().replace(/[\s:_\- ().]+/g, '')
+}
+
+function getCellText(cell) {
+  const v = cell.value
+  if (v == null) return ''
+  if (typeof v === 'string') return v
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v)
+  if (v.richText) return v.richText.map(r => r.text || '').join('')
+  if (v.text) return String(v.text)
+  if (v.formula) return ''
+  if (v.result != null) return String(v.result)
+  return ''
+}
+
+function toNumberOrNull(v) {
+  if (v == null || v === '') return null
+  const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''))
+  return Number.isFinite(n) ? n : null
+}
+
+function buildFieldMap(consumer) {
   const months = [
-    ["February 2025", c1.units_feb2025, "", "", c2?.units_feb2025],
-    ["March 2025",    c1.units_mar2025, "", "", c2?.units_mar2025],
-    ["April 2025",    c1.units_apr2025, "", "", c2?.units_apr2025],
-    ["May 2025",      c1.units_may2025, "", "", c2?.units_may2025],
-    ["June 2025",     c1.units_jun2025, "", "", c2?.units_jun2025],
-    ["July 2025",     c1.units_jul2025, "", "", c2?.units_jul2025],
-    ["August 2025",   c1.units_aug2025, "", "", c2?.units_aug2025],
-    ["September 2025",c1.units_sep2025, "", "", c2?.units_sep2025],
-    ["October 2025",  c1.units_oct2025, "", "", c2?.units_oct2025],
-    ["November 2025", c1.units_nov2025, "", "", c2?.units_nov2025],
-    ["December 2025", c1.units_dec2025, "", "", c2?.units_dec2025],
-    ["January 2026",  c1.units_jan2026, c1.latest_bill_amount, "", c2?.units_jan2026, c2?.latest_bill_amount],
+    'jan2026', 'dec2025', 'nov2025', 'oct2025', 'sep2025', 'aug2025',
+    'jul2025', 'jun2025', 'may2025', 'apr2025', 'mar2025', 'feb2025',
   ]
+  const latestMonthValue = () => {
+    for (const m of months) {
+      const v = toNumberOrNull(consumer[`units_${m}`])
+      if (v != null && v > 0) return v
+    }
+    return null
+  }
 
-  // Calculate values
-  const avg1 = months.reduce((s,m) => s + (parseFloat(m[1])||0), 0) / 12
-  const avg2 = months.reduce((s,m) => s + (parseFloat(m[4])||0), 0) / 12
-  const kw1 = avg1 / (4.5 * 30)
-  const kw2 = avg2 / (4.5 * 30)
-  const panels1 = kw1 / 0.6
-  const panels2 = kw2 / 0.6
-  const cap1 = Math.round(panels1 * 0.6 * 10) / 10
-  const cap2 = Math.round(panels2 * 0.6 * 10) / 10
-  const numPanels1 = Math.ceil(panels1)
-  const numPanels2 = Math.ceil(panels2)
+  const map = {}
+  const set = (label, value) => { map[norm(label)] = value }
 
-  const data = [
-    ["", "Consumer Name", "", c1.consumer_name, "", "", "", c2?.consumer_name || ""],
-    ["", "Consumer No", "", c1.consumer_number, "", "", "", c2?.consumer_number || ""],
-    ["", "Fixed Charges", "", c1.fixed_charges, "", "", "", c2?.fixed_charges || ""],
-    ["", "Sanct. Load (kW)", "", c1.sanctioned_load_kw, "", "", "", c2?.sanctioned_load_kw || ""],
-    ["", "Connection Type", "", c1.connection_type, "", "", "", c2?.connection_type || ""],
-    ["", "Contract Demand (KVA)"],
-    ["", "Solar Panel used", 600],
-    ["", "Sr.No", "Month", "Units", "Bill Amount", "Unit Cost", "Month", "Units", "Bill Amount", "Unit Cost"],
-    ...months.map((m, i) => ["", i+2, m[0], m[1], m[2]||"", "", m[0], m[4]||"", m[5]||"", ""]),
-    [],
-    ["", "", "Average", avg1.toFixed(2), c1.latest_bill_amount, "", "Average", avg2.toFixed(2), c2?.latest_bill_amount || ""],
-    ["", "", "kW", kw1.toFixed(4), "", "", "kW", kw2.toFixed(4)],
-    ["", "", "Solar Panels", panels1.toFixed(4), "", "", "Solar Panels", panels2.toFixed(4)],
-    ["", "", "Solar capacity", cap1, "", "", "Solar capacity", cap2],
-    ["", "", "Number of Panels", numPanels1, "", "", "Number of Panels", numPanels2],
-    [],
-    [],
-    [],
-    ["", "", "Total solar capacity", cap1 + cap2],
-    ["", "", "Number of solar panels", numPanels1 + numPanels2],
-  ]
+  set('Consumer Name', consumer.consumer_name)
+  set('Consumer Number', consumer.consumer_number)
+  set('Consumer No', consumer.consumer_number)
+  set('Billing Month', consumer.latest_bill_month)
+  set('Latest Bill Month', consumer.latest_bill_month)
+  set('Tariff Type', consumer.connection_type)
+  set('Connection Type', consumer.connection_type)
+  set('Bill Amount (INR)', toNumberOrNull(consumer.latest_bill_amount))
+  set('Latest Bill Amount', toNumberOrNull(consumer.latest_bill_amount))
+  set('Bill Amount', toNumberOrNull(consumer.latest_bill_amount))
+  set('Sanctioned Load (kW)', toNumberOrNull(consumer.sanctioned_load_kw))
+  set('Sanct. Load (kW)', toNumberOrNull(consumer.sanctioned_load_kw))
+  set('Connected Load (kW)', toNumberOrNull(consumer.sanctioned_load_kw))
+  set('Fixed Charges', toNumberOrNull(consumer.fixed_charges))
+  set('Units Consumed (kWh)', latestMonthValue())
 
-  const ws = xlsx.utils.aoa_to_sheet(data)
-  const wb = xlsx.utils.book_new()
-  xlsx.utils.book_append_sheet(wb, ws, "Solar Analysis")
-  return xlsx.write(wb, { type: "buffer", bookType: "xlsx" })
+  // Known input labels we don't currently extract. Mapped to null so that
+  // any prior sample data in the template gets cleared rather than leaking
+  // into a new customer's output.
+  set('Meter Number', null)
+  set('Contract Demand (kVA)', null)
+  set('Contract Demand', null)
+
+  const monthLabels = {
+    feb2025: ['Units Feb 2025', 'Feb 2025', 'February 2025'],
+    mar2025: ['Units Mar 2025', 'Mar 2025', 'March 2025'],
+    apr2025: ['Units Apr 2025', 'Apr 2025', 'April 2025'],
+    may2025: ['Units May 2025', 'May 2025'],
+    jun2025: ['Units Jun 2025', 'Jun 2025', 'June 2025'],
+    jul2025: ['Units Jul 2025', 'Jul 2025', 'July 2025'],
+    aug2025: ['Units Aug 2025', 'Aug 2025', 'August 2025'],
+    sep2025: ['Units Sep 2025', 'Sep 2025', 'September 2025'],
+    oct2025: ['Units Oct 2025', 'Oct 2025', 'October 2025'],
+    nov2025: ['Units Nov 2025', 'Nov 2025', 'November 2025'],
+    dec2025: ['Units Dec 2025', 'Dec 2025', 'December 2025'],
+    jan2026: ['Units Jan 2026', 'Jan 2026', 'January 2026'],
+  }
+  for (const [key, labels] of Object.entries(monthLabels)) {
+    const v = toNumberOrNull(consumer[`units_${key}`])
+    for (const lbl of labels) set(lbl, v)
+  }
+
+  return map
+}
+
+export async function buildExcel(consumer1) {
+  const wb = new ExcelJS.Workbook()
+  await wb.xlsx.readFile(TEMPLATE_PATH)
+
+  // Force Excel to recompute formulas on open so derived cells refresh.
+  wb.calcProperties = wb.calcProperties || {}
+  wb.calcProperties.fullCalcOnLoad = true
+
+  const ws = wb.worksheets[0]
+  if (!ws) throw new Error('Template has no worksheets')
+
+  const fieldMap = buildFieldMap(consumer1)
+  const queued = []
+  const skipped = []
+
+  // Two-pass: collect candidate writes first, then apply.
+  // Re-visiting a cell we just wrote to could otherwise match it as a label
+  // (e.g., a written billing month "Jan 2026" colliding with a month-units label).
+  ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    row.eachCell({ includeEmpty: false }, (labelCell, colNumber) => {
+      const text = getCellText(labelCell)
+      // Treat as a label only if the cell text carries a colon or sits in column A —
+      // raw values like "Jan 2026" then aren't mistaken for labels.
+      if (!text.includes(':') && colNumber !== 1) return
+
+      const key = norm(text)
+      if (!key || !Object.prototype.hasOwnProperty.call(fieldMap, key)) return
+
+      // value === undefined would mean unknown label (already filtered above).
+      // null or '' means "known label, no data" — clear the target cell so
+      // sample data baked into the template doesn't leak into a new output.
+      const raw = fieldMap[key]
+      const writeValue = (raw === null || raw === '') ? null : raw
+
+      const targetCell = row.getCell(colNumber + 1)
+      if (targetCell.formula) {
+        skipped.push({ at: targetCell.address, reason: 'formula', label: key })
+        return
+      }
+      queued.push({ cell: targetCell, value: writeValue, label: key })
+    })
+  })
+
+  const writes = []
+  for (const { cell, value, label } of queued) {
+    cell.value = value
+    writes.push({ at: cell.address, label, value })
+  }
+
+  if (writes.length === 0) {
+    console.warn('[generateExcel] No template cells matched extracted fields. Template path:', TEMPLATE_PATH)
+  } else {
+    console.log(`[generateExcel] Wrote ${writes.length} cells, skipped ${skipped.length} formula-protected`)
+  }
+
+  return await wb.xlsx.writeBuffer()
 }
