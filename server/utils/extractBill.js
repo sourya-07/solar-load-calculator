@@ -56,7 +56,16 @@ async function extractWithGemini(base64, mimeType) {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   const model = genAI.getGenerativeModel({ model: GEMINI_MODEL })
 
-  const result = await model.generateContent({
+  const generationConfig = {
+    responseMimeType: "application/json",
+    temperature: 0,
+    topP: 0,
+    // Gemini 2.5 has "thinking" on by default which adds 10-30s of latency.
+    // For deterministic structured extraction we don't need it.
+    thinkingConfig: { thinkingBudget: 0 },
+  }
+
+  const requestPromise = model.generateContent({
     contents: [
       {
         role: "user",
@@ -66,9 +75,18 @@ async function extractWithGemini(base64, mimeType) {
         ],
       },
     ],
-    generationConfig: { responseMimeType: "application/json" },
+    generationConfig,
   })
 
+  const TIMEOUT_MS = 60_000
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(
+      () => reject(new Error("Extraction timed out after 60s. The bill image may be too large or the AI service is slow — please try again.")),
+      TIMEOUT_MS
+    )
+  )
+
+  const result = await Promise.race([requestPromise, timeoutPromise])
   const text = result.response.text()
   try {
     return JSON.parse(text)

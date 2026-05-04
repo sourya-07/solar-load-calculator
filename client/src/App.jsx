@@ -1,10 +1,62 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
-import { ArrowUpRight, Sun } from 'lucide-react'
+import { ArrowUpRight, Sun, AlertTriangle, ChevronDown } from 'lucide-react'
 import UploadZone from './components/UploadZone'
 import StatusStepper from './components/StatusStepper'
 import ReviewTable from './components/ReviewTable'
 import ResultCard from './components/ResultCard'
+
+function friendlyError(raw) {
+  const msg = String(raw || '').toLowerCase()
+
+  if (msg.includes('429') || msg.includes('quota') || msg.includes('rate limit') || msg.includes('too many requests')) {
+    return {
+      title: 'Our AI is taking a quick breather',
+      body: 'We\'ve hit today\'s free usage limit for the bill-reading service. Please try again in a few minutes — or come back tomorrow when the quota resets.',
+    }
+  }
+  if (msg.includes('network') || msg.includes('failed to fetch') || msg.includes('econnrefused') || msg.includes('timeout')) {
+    return {
+      title: 'Connection trouble',
+      body: 'We couldn\'t reach the server. Check your internet connection and try again.',
+    }
+  }
+  if (msg.includes('no file') || msg.includes('attach a bill')) {
+    return {
+      title: 'No bill attached',
+      body: 'Please attach your MSEDCL electricity bill (PDF or image) before continuing.',
+    }
+  }
+  if (msg.includes('parse') || msg.includes('json')) {
+    return {
+      title: 'Couldn\'t read the bill clearly',
+      body: 'The bill image may be blurry or low quality. Try uploading a clearer photo or the original PDF.',
+    }
+  }
+  if (msg.includes('template') || msg.includes('enoent')) {
+    return {
+      title: 'Report template missing',
+      body: 'The Excel template isn\'t set up on the server. Please contact support.',
+    }
+  }
+  if (msg.includes('pdf') && msg.includes('image')) {
+    return {
+      title: 'PDF not supported in this mode',
+      body: 'Please convert your bill to a PNG or JPEG image, or switch the AI provider in settings.',
+    }
+  }
+  if (msg.includes('500') || msg.includes('internal server')) {
+    return {
+      title: 'Something went wrong on our end',
+      body: 'Our server hit a snag. Please try again in a moment.',
+    }
+  }
+
+  return {
+    title: 'We ran into a problem',
+    body: 'Something didn\'t go as expected. Please try again — and if it keeps happening, reach out to support.',
+  }
+}
 
 export default function App() {
   const [step, setStep] = useState('upload')
@@ -14,7 +66,16 @@ export default function App() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [showErrorDetails, setShowErrorDetails] = useState(false)
   const [warnings, setWarnings] = useState([])
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    if (step !== 'processing') { setElapsed(0); return }
+    const start = Date.now()
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 250)
+    return () => clearInterval(id)
+  }, [step])
 
   const workflowRef = useRef(null)
 
@@ -190,17 +251,48 @@ export default function App() {
         <section ref={workflowRef} id="workflow" className="mt-8 bg-cream-soft rounded-3xl frame-thick overflow-hidden">
           <StatusStepper currentStep={step} />
 
-          {error && (
-            <div className="border-t-[1.5px] border-ink bg-coral/15 px-6 py-4 flex items-center justify-between">
-              <span className="font-display font-semibold text-ink">! {error}</span>
-              <button
-                onClick={() => setError(null)}
-                className="font-display font-bold text-xl text-ink/70 hover:text-ink"
-              >
-                ×
-              </button>
-            </div>
-          )}
+          {error && (() => {
+            const friendly = friendlyError(error)
+            return (
+              <div className="border-t-[1.5px] border-ink bg-coral/15 px-6 py-5">
+                <div className="flex items-start gap-4">
+                  <span className="shrink-0 w-10 h-10 rounded-full bg-coral/30 flex items-center justify-center mt-0.5">
+                    <AlertTriangle size={18} className="text-ink" strokeWidth={2.25} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-display font-extrabold text-lg text-ink leading-snug">
+                      {friendly.title}
+                    </div>
+                    <p className="text-sm text-ink/75 mt-1 leading-relaxed">
+                      {friendly.body}
+                    </p>
+                    <button
+                      onClick={() => setShowErrorDetails((v) => !v)}
+                      className="mt-3 inline-flex items-center gap-1 text-xs uppercase tracking-widest text-ink/50 hover:text-ink/80 transition"
+                    >
+                      <ChevronDown
+                        size={12}
+                        className={`transition-transform ${showErrorDetails ? 'rotate-180' : ''}`}
+                      />
+                      {showErrorDetails ? 'hide technical details' : 'show technical details'}
+                    </button>
+                    {showErrorDetails && (
+                      <pre className="mt-2 text-[11px] text-ink/60 bg-cream/60 rounded-lg px-3 py-2 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono">
+                        {String(error)}
+                      </pre>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { setError(null); setShowErrorDetails(false) }}
+                    className="shrink-0 font-display font-bold text-xl text-ink/50 hover:text-ink leading-none -mt-1"
+                    aria-label="Dismiss"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )
+          })()}
 
           <div className="border-t-[1.5px] border-ink">
             {step === 'upload' && (
@@ -238,6 +330,12 @@ export default function App() {
                 <p className="text-ink/70 max-w-sm">
                   Reading consumer details, sanctioned load, and 12 months of usage.
                 </p>
+                <div className="mt-6 inline-flex items-center gap-2 bg-cream rounded-full px-4 py-2 text-sm text-ink/70">
+                  <span className="w-2 h-2 rounded-full bg-lime animate-pulse" />
+                  <span className="font-display font-semibold tabular-nums">{elapsed}s elapsed</span>
+                  <span className="text-ink/40">·</span>
+                  <span>{elapsed < 15 ? 'usually takes 10–20 seconds' : elapsed < 40 ? 'almost there…' : 'taking longer than usual — hang tight'}</span>
+                </div>
               </div>
             )}
 
