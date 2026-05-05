@@ -75,32 +75,7 @@ Important rules:
     throw new Error(`Failed to parse extracted JSON. Raw text: ${text}`)
   }
 }
-{ text: PROMPT },
-        ],
-      },
-    ],
-generationConfig,
-  })
 
-const TIMEOUT_MS = 60_000
-const timeoutPromise = new Promise((_, reject) =>
-  setTimeout(
-    () => reject(new Error("Extraction timed out after 60s. The bill image may be too large or the AI service is slow — please try again.")),
-    TIMEOUT_MS
-  )
-)
-
-const result = await Promise.race([requestPromise, timeoutPromise])
-const text = result.response.text()
-try {
-  return JSON.parse(text)
-} catch {
-  throw new Error(`Failed to parse extracted JSON. Raw text: ${text}`)
-}
-}
-
-// Ollama vision path. Uses /api/generate with images[] (raw base64, no data URI).
-// PDFs aren't supported by vision models — caller should send images locally.
 async function extractWithOllama(base64, mimeType) {
   if (mimeType === "application/pdf") {
     throw new Error(
