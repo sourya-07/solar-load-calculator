@@ -29,6 +29,44 @@ function toNumberOrNull(v) {
   return Number.isFinite(n) ? n : null
 }
 
+// Lightweight kind inference based on the normalized label, used purely for
+// styling (number format + alignment) of the cells we write to.
+function inferKind(normLabel) {
+  if (normLabel.includes('amount') || normLabel.includes('charges')) return 'currency'
+  if (normLabel.includes('units')) return 'integer'
+  if (normLabel.includes('load') || normLabel.includes('demand')) return 'decimal'
+  if (normLabel.includes('month')) return 'text'
+  return 'text'
+}
+
+function applyInputStyle(cell, kind) {
+  cell.font = {
+    name: 'Inter',
+    size: 11,
+    color: { argb: 'FF1A2421' },
+  }
+  cell.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFF6FADE' }, // soft lime tint — matches the app cream/lime palette
+  }
+  cell.alignment = {
+    vertical: 'middle',
+    horizontal: (kind === 'currency' || kind === 'integer' || kind === 'decimal') ? 'right' : 'left',
+    wrapText: true,
+    indent: 1,
+  }
+  cell.border = {
+    top:    { style: 'thin', color: { argb: 'FFD9DEC4' } },
+    bottom: { style: 'thin', color: { argb: 'FFD9DEC4' } },
+    left:   { style: 'thin', color: { argb: 'FFD9DEC4' } },
+    right:  { style: 'thin', color: { argb: 'FFD9DEC4' } },
+  }
+  if (kind === 'currency')      cell.numFmt = '"₹"#,##0.00;[Red]-"₹"#,##0.00'
+  else if (kind === 'decimal')  cell.numFmt = '#,##0.00'
+  else if (kind === 'integer')  cell.numFmt = '#,##0'
+}
+
 function buildFieldMap(consumer) {
   const months = [
     'jan2026', 'dec2025', 'nov2025', 'oct2025', 'sep2025', 'aug2025',
@@ -101,6 +139,11 @@ export async function buildExcel(consumer1) {
   const ws = wb.worksheets[0]
   if (!ws) throw new Error('Template has no worksheets')
 
+  // Hide Excel's default gridlines so empty cells don't appear as fake "extra
+  // columns". Our styled input cells still show their own explicit borders,
+  // giving the data area a clean tabular look against a flat background.
+  ws.views = [{ ...(ws.views?.[0] || {}), showGridLines: false }]
+
   const fieldMap = buildFieldMap(consumer1)
   const queued = []
   const skipped = []
@@ -134,9 +177,37 @@ export async function buildExcel(consumer1) {
   })
 
   const writes = []
+  const styledRows = new Set()
+  const inputCols = new Set()
+  const labelCols = new Set()
   for (const { cell, value, label } of queued) {
     cell.value = value
+    applyInputStyle(cell, inferKind(label))
+    // Give the row a comfortable height so wrapped text isn't crammed.
+    // Only nudge upward — never shrink an existing taller row from the template.
+    const row = ws.getRow(cell.row)
+    if (!styledRows.has(cell.row)) {
+      const MIN_HEIGHT = 26
+      if (!row.height || row.height < MIN_HEIGHT) row.height = MIN_HEIGHT
+      styledRows.add(cell.row)
+    }
+    inputCols.add(cell.col)
+    if (cell.col > 1) labelCols.add(cell.col - 1)
     writes.push({ at: cell.address, label, value })
+  }
+
+  // Widen the label and input columns we touched so text doesn't truncate
+  // ("Consumer Na…") or wrap mid-word ("RANJA / NA"). Only nudge upward —
+  // if the template already set a wider column, leave it alone.
+  const MIN_LABEL_WIDTH = 28
+  const MIN_INPUT_WIDTH = 24
+  for (const c of labelCols) {
+    const col = ws.getColumn(c)
+    if (!col.width || col.width < MIN_LABEL_WIDTH) col.width = MIN_LABEL_WIDTH
+  }
+  for (const c of inputCols) {
+    const col = ws.getColumn(c)
+    if (!col.width || col.width < MIN_INPUT_WIDTH) col.width = MIN_INPUT_WIDTH
   }
 
   if (writes.length === 0) {
