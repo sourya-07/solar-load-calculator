@@ -177,7 +177,6 @@ export default function App() {
           <nav className="hidden md:flex items-center gap-1">
             <a className="nav-link is-active" href="#home">Home</a>
             <a className="nav-link" href="#workflow" onClick={(e) => { e.preventDefault(); scrollToWorkflow() }}>Upload</a>
-            <a className="nav-link" href="#how">How it Works</a>
             <a className="nav-link" href="#about">About</a>
           </nav>
         </header>
@@ -371,7 +370,11 @@ export default function App() {
 
             {step === 'done' && (
               <>
-                <ResultCard consumer1={consumer1} />
+                <ResultCard
+                  consumer1={consumer1}
+                  onDownload={handleGenerateExcel}
+                  downloading={loading}
+                />
                 <div className="px-6 sm:px-10 py-6 border-t-[1.5px] border-ink flex justify-between items-center">
                   <span className="micro text-ink/60">file saved to your downloads</span>
                   <button onClick={handleReset} className="btn-ghost text-sm">

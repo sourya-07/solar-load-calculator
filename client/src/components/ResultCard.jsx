@@ -14,7 +14,7 @@ function summarize(consumer) {
   return { total, avg, monthsWithData: values.length }
 }
 
-export default function ResultCard({ consumer1 }) {
+export default function ResultCard({ consumer1, onDownload, downloading }) {
   const summary = summarize(consumer1)
   if (!consumer1 || !summary) return null
 
@@ -44,6 +44,16 @@ export default function ResultCard({ consumer1 }) {
             has been generated using the official Energybae template. Recommended capacity, panel
             count and projected savings live inside the file — open it to view.
           </p>
+          {onDownload && (
+            <button
+              onClick={onDownload}
+              disabled={downloading}
+              className="btn-primary text-base mt-6 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {downloading ? 'preparing…' : 'download excel report'}
+              <span className="arrow">↓</span>
+            </button>
+          )}
         </div>
       </div>
 
